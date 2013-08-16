@@ -18,27 +18,41 @@ import os
 import sys
 import unittest2 as unittest
 
-import barbicanclient.keep
+from mock import MagicMock
+
+from barbicanclient import keep
 
 
-def suite():
-    suite = unittest.TestSuite()
+class KeepTest(unittest.TestCase):
+    def setUp(self):
+        self.auth_endpoint = "http://keystone-int.cloudkeep.io:5000/v2.0/"
+        self.username = 'demo'
+        self.password = 'password'
+        self.tenant = 'demo'
+        self.endpoint = "http://localhost:9311/v1/"
+        self.token = 'test'
+        self.Keep = keep.Keep()
+        self.keep_argstr = ("--auth_endpoint {0} --user {1} --password {2} " +
+                            "--tenant {3} --endpoint {4} --token {5} ").format(
+                                self.auth_endpoint, self.username,
+                                self.password, self.tenant, self.endpoint,
+                                self.token)
 
-    suite.addTest(TestKeep())
+        self.mock_conn = MagicMock(name='Connection Mock')
+        self.Connection = self.mock_conn(self.auth_endpoint, self.username,
+                                         self.password, self.tenant,
+                                         self.endpoint, self.token)
 
-    return suite
-
-
-class TestKeep(unittest.TestCase):
     def keep(self, argstr):
-        """Source: Keystone client's shell method in test_shell.py"""
+        """Based on Keystone client's shell method in test_shell.py"""
         orig = sys.stdout
         clean_env = {}
         _old_env, os.environ = os.environ, clean_env.copy()
+        argstr = self.keep_argstr + argstr
         try:
             sys.stdout = cStringIO.StringIO()
-            _keep = barbicanclient.keep.Keep()
-            _keep.execute(argv=argstr.split())
+            _keep = self.Keep
+            _keep.execute(argv=argstr.split(), conn=self.Connection)
         except SystemExit:
             exc_type, exc_value, exc_traceback = sys.exc_info()
             self.assertEqual(exc_value.code, 0)
@@ -49,12 +63,23 @@ class TestKeep(unittest.TestCase):
             os.environ = _old_env
         return out
 
-    def setUp(self):
-        pass
-
     def test_help(self):
         args = "-h"
         self.assertIn('usage: ', self.keep(args))
+
+    def test_no_args(self):
+        args = ""
+        with self.assertRaises(AssertionError) as e:
+            self.assertIn('usage: ', self.keep(args))
+            self.assertIn('2 != 0', str(e))
+
+    def test_create_secret(self):
+        args = "secret create"
+        self.keep(args)
+        self.Connection.create_secret.\
+            assert_called_once_with(None, None, None, None, 'aes', 256, 'cbc',
+                                    None)
+
 
 if __name__ == '__main__':
     unittest.main()

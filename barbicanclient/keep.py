@@ -1,6 +1,6 @@
 import argparse
 
-from barbicanclient import client
+from barbicanclient.client import Connection, env
 
 
 class Keep:
@@ -21,25 +21,25 @@ class Keep:
                             choices=["order", "secret"],
                             help="type to operate on")
         parser.add_argument('--auth_endpoint', '-A',
-                            default=client.env('OS_AUTH_URL'),
+                            default=env('OS_AUTH_URL'),
                             help='the URL to authenticate against (default: '
                                  '%(default)s)')
-        parser.add_argument('--user', '-U', default=client.env('OS_USERNAME'),
+        parser.add_argument('--user', '-U', default=env('OS_USERNAME'),
                             help='the user to authenticate as (default: %(de'
                                  'fault)s)')
         parser.add_argument('--password', '-P',
-                            default=client.env('OS_PASSWORD'),
+                            default=env('OS_PASSWORD'),
                             help='the API key or password to authenticate with'
                             ' (default: %(default)s)')
         parser.add_argument('--tenant', '-T',
-                            default=client.env('OS_TENANT_NAME'),
+                            default=env('OS_TENANT_NAME'),
                             help='the tenant ID (default: %(default)s)')
         parser.add_argument('--endpoint', '-E',
-                            default=client.env('BARBICAN_ENDPOINT'),
+                            default=env('BARBICAN_ENDPOINT'),
                             help='the URL of the barbican server (default: %'
                             '(default)s)')
         parser.add_argument('--token', '-K',
-                            default=client.env('AUTH_TOKEN'), help='the au'
+                            default=env('AUTH_TOKEN'), help='the au'
                             'thentication token (default: %(default)s)')
         return parser
 
@@ -169,10 +169,10 @@ class Keep:
 
     def execute(self, **kwargs):
         args = self.parser.parse_args(kwargs.get('argv'))
-        self.conn = client.Connection(args.auth_endpoint, args.user,
-                                      args.password, args.tenant,
-                                      args.token,
-                                      endpoint=args.endpoint)
+        self.conn = kwargs.get('conn') or Connection(args.auth_endpoint,
+                                                     args.user, args.password,
+                                                     args.tenant, args.token,
+                                                     endpoint=args.endpoint)
 
         args.func(args)
 
